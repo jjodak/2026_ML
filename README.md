@@ -1,6 +1,6 @@
 # Delivery Time Data Analysis
 
-이 저장소는 배달 시간 데이터(`delivery_time_synthetic.csv`)를 활용한 데이터 분석 프로젝트입니다.
+이 저장소는 배달 시간 데이터(`delivery_time_synthetic.csv`)를 활용한 데이터 분석 머신러닝 프로젝트입니다.
 
 ## Environment
 
