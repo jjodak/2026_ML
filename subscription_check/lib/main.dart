@@ -1,12 +1,21 @@
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
 import 'package:provider/provider.dart';
 import 'providers/subscription_provider.dart';
 import 'screens/home_screen.dart';
+import 'theme/app_theme.dart';
 
 void main() {
+  WidgetsFlutterBinding.ensureInitialized();
+  SystemChrome.setSystemUIOverlayStyle(const SystemUiOverlayStyle(
+    statusBarColor: Colors.transparent,
+    statusBarIconBrightness: Brightness.dark,
+    statusBarBrightness: Brightness.light,
+  ));
+
   runApp(
     ChangeNotifierProvider(
-      create: (_) => SubscriptionProvider(),
+      create: (_) => SubscriptionProvider()..analyzeAll(),
       child: const MyApp(),
     ),
   );
@@ -18,12 +27,24 @@ class MyApp extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return MaterialApp(
-      title: '내 구독 정리',
-      theme: ThemeData(
-        colorScheme: ColorScheme.fromSeed(seedColor: Colors.indigo),
-        useMaterial3: true,
-      ),
+      title: 'SubCut',
+      debugShowCheckedModeBanner: false,
+      theme: AppTheme.light(),
       home: const HomeScreen(),
+      builder: (context, child) {
+        return GestureDetector(
+          behavior: HitTestBehavior.translucent,
+          onTap: () {
+            final currentFocus = FocusManager.instance.primaryFocus;
+            if (currentFocus != null && !currentFocus.hasPrimaryFocus) {
+              currentFocus.unfocus();
+            } else {
+              currentFocus?.unfocus();
+            }
+          },
+          child: child,
+        );
+      },
     );
   }
 }

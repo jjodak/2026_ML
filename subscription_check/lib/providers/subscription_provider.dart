@@ -1,3 +1,5 @@
+import 'dart:async';
+
 import 'package:flutter/foundation.dart';
 import '../models/subscription.dart';
 import '../services/predict_service.dart';
@@ -13,6 +15,8 @@ class ChurnResult {
     required this.reason,
   });
 }
+
+const _analyzeDebounce = Duration(milliseconds: 600);
 
 class SubscriptionProvider extends ChangeNotifier {
   final List<Subscription> _items = [
@@ -30,6 +34,7 @@ class SubscriptionProvider extends ChangeNotifier {
       isAnnual: false,
       remainingMonths: 0.0,
       discountAmount: 0,
+      emoji: '🎬',
     ),
     Subscription(
       id: '2',
@@ -45,6 +50,7 @@ class SubscriptionProvider extends ChangeNotifier {
       isAnnual: false,
       remainingMonths: 0.0,
       discountAmount: 0,
+      emoji: '▶️',
     ),
     Subscription(
       id: '3',
@@ -60,6 +66,7 @@ class SubscriptionProvider extends ChangeNotifier {
       isAnnual: true,
       remainingMonths: 5.0,
       discountAmount: 10000,
+      emoji: '💪',
     ),
   ];
 
@@ -67,26 +74,58 @@ class SubscriptionProvider extends ChangeNotifier {
   Map<String, ChurnResult> _results = {};
   bool _isAnalyzing = false;
   String? _errorMessage;
+  Timer? _debounce;
 
   List<Subscription> get items => List.unmodifiable(_items);
   Map<String, ChurnResult> get results => Map.unmodifiable(_results);
   bool get isAnalyzing => _isAnalyzing;
   String? get errorMessage => _errorMessage;
 
+  int get totalMonthlyCost =>
+      _items.fold(0, (sum, s) => sum + s.effectiveMonthlyCost);
+
+  int get saveableCost {
+    var sum = 0;
+    for (final s in _items) {
+      final r = _results[s.id];
+      if (r != null && r.isChurnCandidate) {
+        sum += s.effectiveMonthlyCost;
+      }
+    }
+    return sum;
+  }
+
+  String get nextId => (_nextId++).toString();
+
   void addSubscription(Subscription s) {
     _items.add(s);
     notifyListeners();
+    _scheduleAnalyze();
   }
 
   void removeSubscription(String id) {
     _items.removeWhere((s) => s.id == id);
     _results.remove(id);
     notifyListeners();
+    _scheduleAnalyze();
   }
 
-  String get nextId => (_nextId++).toString();
+  void updateSubscription(Subscription updated) {
+    final idx = _items.indexWhere((s) => s.id == updated.id);
+    if (idx < 0) return;
+    _items[idx] = updated;
+    notifyListeners();
+    _scheduleAnalyze();
+  }
+
+  void _scheduleAnalyze() {
+    _debounce?.cancel();
+    if (_items.isEmpty) return;
+    _debounce = Timer(_analyzeDebounce, analyzeAll);
+  }
 
   Future<void> analyzeAll() async {
+    if (_items.isEmpty) return;
     _isAnalyzing = true;
     _errorMessage = null;
     notifyListeners();
@@ -100,5 +139,11 @@ class SubscriptionProvider extends ChangeNotifier {
 
     _isAnalyzing = false;
     notifyListeners();
+  }
+
+  @override
+  void dispose() {
+    _debounce?.cancel();
+    super.dispose();
   }
 }

@@ -1,0 +1,4 @@
+// 이 파일을 복사하여 server_config.dart로 만들고 실제 IP를 입력하세요.
+// cp lib/config/server_config.dart.example lib/config/server_config.dart
+
+const serverHost = 'YOUR_SERVER_IP'; // 예: '192.168.1.100'

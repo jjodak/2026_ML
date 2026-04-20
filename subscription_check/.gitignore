@@ -43,3 +43,6 @@ app.*.map.json
 /android/app/debug
 /android/app/profile
 /android/app/release
+
+# 서버 IP 등 로컬 환경 설정 (server_config.dart.example을 복사해서 사용)
+lib/config/server_config.dart

@@ -1,15 +1,13 @@
 import 'dart:convert';
 import 'package:flutter/foundation.dart' show kIsWeb;
 import 'package:http/http.dart' as http;
+import '../config/server_config.dart';
 import '../models/subscription.dart';
 import '../providers/subscription_provider.dart';
 
-const _macIp = '172.16.113.182';
-
 String get _baseUrl {
   if (kIsWeb) return 'http://localhost:5050';
-  // 네이티브(iOS/Android)에서는 실기기용 IP 사용
-  return 'http://$_macIp:5050';
+  return 'http://$serverHost:5050';
 }
 
 Future<Map<String, ChurnResult>> predictBatch(

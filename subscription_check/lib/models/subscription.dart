@@ -16,6 +16,7 @@ class Subscription {
   final bool isAnnual;
   final double remainingMonths;
   final int discountAmount;
+  final String? emoji;
 
   int get effectiveMonthlyCost =>
       (monthlyCost - discountAmount).clamp(0, monthlyCost);
@@ -64,6 +65,40 @@ class Subscription {
     return map;
   }
 
+  Subscription copyWith({
+    String? id,
+    String? name,
+    String? type,
+    int? monthlyCost,
+    UseFrequency? useFrequency,
+    LastUseRecency? lastUseRecency,
+    int? perceivedNecessity,
+    int? costBurden,
+    int? wouldRebuy,
+    bool? replacementAvailable,
+    bool? isAnnual,
+    double? remainingMonths,
+    int? discountAmount,
+    String? emoji,
+  }) {
+    return Subscription(
+      id: id ?? this.id,
+      name: name ?? this.name,
+      type: type ?? this.type,
+      monthlyCost: monthlyCost ?? this.monthlyCost,
+      useFrequency: useFrequency ?? this.useFrequency,
+      lastUseRecency: lastUseRecency ?? this.lastUseRecency,
+      perceivedNecessity: perceivedNecessity ?? this.perceivedNecessity,
+      costBurden: costBurden ?? this.costBurden,
+      wouldRebuy: wouldRebuy ?? this.wouldRebuy,
+      replacementAvailable: replacementAvailable ?? this.replacementAvailable,
+      isAnnual: isAnnual ?? this.isAnnual,
+      remainingMonths: remainingMonths ?? this.remainingMonths,
+      discountAmount: discountAmount ?? this.discountAmount,
+      emoji: emoji ?? this.emoji,
+    );
+  }
+
   Subscription({
     required this.id,
     required this.name,
@@ -78,5 +113,32 @@ class Subscription {
     this.isAnnual = false,
     this.remainingMonths = 0,
     this.discountAmount = 0,
+    this.emoji,
   });
+}
+
+String freqShortLabel(UseFrequency f) {
+  switch (f) {
+    case UseFrequency.rare:
+      return '드물게';
+    case UseFrequency.monthly:
+      return '월 1~2회';
+    case UseFrequency.weekly:
+      return '주 1~2회';
+    case UseFrequency.frequent:
+      return '거의 매일';
+  }
+}
+
+String recencyShortLabel(LastUseRecency r) {
+  switch (r) {
+    case LastUseRecency.over30d:
+      return '30일+';
+    case LastUseRecency.between7and30d:
+      return '7-30일';
+    case LastUseRecency.between1and7d:
+      return '1-7일';
+    case LastUseRecency.under1d:
+      return '1일 이내';
+  }
 }
