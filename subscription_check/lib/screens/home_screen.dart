@@ -4,11 +4,18 @@ import '../providers/subscription_provider.dart';
 import '../theme/app_theme.dart';
 import '../widgets/subscription_card.dart';
 import '../widgets/add_subscription_sheet.dart';
+import 'analytics_screen.dart';
 
 const double _maxContentWidth = 460;
 
 class HomeScreen extends StatelessWidget {
   const HomeScreen({super.key});
+
+  void _openAnalytics(BuildContext context) {
+    Navigator.of(context).push(
+      MaterialPageRoute(builder: (_) => const AnalyticsScreen()),
+    );
+  }
 
   void _openAddSheet(BuildContext context) {
     Navigator.of(context).push(
@@ -48,7 +55,11 @@ class HomeScreen extends StatelessWidget {
                   color: AppColors.primary,
                   child: CustomScrollView(
                     slivers: [
-                      SliverToBoxAdapter(child: _Header()),
+                      SliverToBoxAdapter(
+                        child: _Header(
+                          onTapAnalytics: () => _openAnalytics(context),
+                        ),
+                      ),
                       SliverToBoxAdapter(
                         child: _HeroSection(provider: provider),
                       ),
@@ -100,6 +111,9 @@ class HomeScreen extends StatelessWidget {
 }
 
 class _Header extends StatelessWidget {
+  final VoidCallback onTapAnalytics;
+  const _Header({required this.onTapAnalytics});
+
   @override
   Widget build(BuildContext context) {
     return Container(
@@ -111,7 +125,7 @@ class _Header extends StatelessWidget {
         child: ConstrainedBox(
           constraints: const BoxConstraints(maxWidth: _maxContentWidth),
           child: Padding(
-            padding: const EdgeInsets.symmetric(horizontal: 24),
+            padding: const EdgeInsets.fromLTRB(24, 0, 12, 0),
             child: SizedBox(
               height: 60,
               child: Row(
@@ -144,10 +158,39 @@ class _Header extends StatelessWidget {
                       ),
                     ],
                   ),
+                  const Spacer(),
+                  _AnalyticsIconButton(onTap: onTapAnalytics),
                 ],
               ),
             ),
           ),
+        ),
+      ),
+    );
+  }
+}
+
+class _AnalyticsIconButton extends StatelessWidget {
+  final VoidCallback onTap;
+  const _AnalyticsIconButton({required this.onTap});
+
+  @override
+  Widget build(BuildContext context) {
+    return GestureDetector(
+      onTap: onTap,
+      behavior: HitTestBehavior.opaque,
+      child: Container(
+        width: 40,
+        height: 40,
+        decoration: BoxDecoration(
+          color: AppColors.neutralChip,
+          borderRadius: BorderRadius.circular(12),
+        ),
+        alignment: Alignment.center,
+        child: const Icon(
+          Icons.bar_chart_rounded,
+          size: 20,
+          color: AppColors.textSecondary,
         ),
       ),
     );

@@ -93,6 +93,7 @@ class Prediction(Base):
 
     id = Column(Integer, primary_key=True, autoincrement=True)
     created_at = Column(DateTime, default=datetime.utcnow, nullable=False, index=True)
+    device_id  = Column(String(128), nullable=True, index=True)
 
     # ── 입력 피처 (모델 학습에 사용되는 원본 컬럼) ──
     subscription_type     = Column(String(50))
@@ -118,9 +119,30 @@ class Prediction(Base):
     feedback_at   = Column(DateTime, nullable=True)
 
 
+def _apply_lightweight_migrations() -> None:
+    """SQLAlchemy 의 create_all 은 신규 컬럼을 추가하지 않는다.
+    IF NOT EXISTS 가 가능한 PostgreSQL / SQLite 에서 안전하게 ALTER 한다.
+    """
+    with engine.begin() as conn:
+        if IS_SQLITE:
+            # SQLite 는 IF NOT EXISTS 지원이 버전에 따라 다르므로 PRAGMA 로 확인
+            rows = conn.execute(text("PRAGMA table_info(predictions)")).fetchall()
+            cols = {row[1] for row in rows}
+            if rows and "device_id" not in cols:
+                conn.execute(text("ALTER TABLE predictions ADD COLUMN device_id VARCHAR(128)"))
+        else:
+            conn.execute(text(
+                "ALTER TABLE predictions ADD COLUMN IF NOT EXISTS device_id VARCHAR(128)"
+            ))
+            conn.execute(text(
+                "CREATE INDEX IF NOT EXISTS ix_predictions_device_id ON predictions(device_id)"
+            ))
+
+
 def init_db() -> None:
-    """서버 시작 시 호출. 테이블이 없으면 생성."""
+    """서버 시작 시 호출. 테이블이 없으면 생성 + 경량 마이그레이션."""
     Base.metadata.create_all(bind=engine)
+    _apply_lightweight_migrations()
     print(f"[DB] Connected: {_mask_url(DATABASE_URL)}")
 
 

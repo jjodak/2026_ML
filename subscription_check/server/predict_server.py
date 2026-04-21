@@ -110,7 +110,7 @@ def _estimate_would_rebuy(freq_score: int, necessity: int) -> int:
 
 
 # ── 단건 예측 (DB 저장 포함) ───────────────────────────────────────────────
-def predict_and_log(raw: dict, session) -> dict:
+def predict_and_log(raw: dict, session, device_id: str | None = None) -> dict:
     monthly_cost        = int(raw.get("monthly_cost", 0))
     use_frequency       = raw.get("use_frequency", "monthly")
     perceived_necessity = int(raw.get("perceived_necessity", 3))
@@ -146,6 +146,7 @@ def predict_and_log(raw: dict, session) -> dict:
     # DB 저장
     record = Prediction(
         **row,
+        device_id=device_id,
         predicted_churn=is_churn,
         predicted_confidence=round(confidence, 4),
         model_version=current_model_version,
@@ -273,8 +274,9 @@ def predict():
     if not data:
         return jsonify({"error": "No JSON body"}), 400
 
+    device_id = _require_device_id() or None
     with session_scope() as session:
-        result = predict_and_log(data, session)
+        result = predict_and_log(data, session, device_id=device_id)
     return jsonify(result)
 
 
@@ -287,11 +289,12 @@ def predict_batch():
     if not isinstance(items, list):
         return jsonify({"error": "Expected JSON array"}), 400
 
+    device_id = _require_device_id() or None
     results = {}
     with session_scope() as session:
         for item in items:
             sid = item.get("id", "")
-            results[sid] = predict_and_log(item, session)
+            results[sid] = predict_and_log(item, session, device_id=device_id)
     return jsonify(results)
 
 
@@ -346,6 +349,80 @@ def stats():
         "kept_count":        kept,
         "churned_count":     churned,
         "model_version":     current_model_version,
+    })
+
+
+@app.route("/savings", methods=["GET"])
+def savings():
+    """
+    기기별 누적 절감액 (해지 피드백 기반).
+
+    응답:
+      - cancelled_count     : 해지한 예측 건수 (actual_target=0)
+      - kept_count          : 유지한 예측 건수
+      - monthly_savings     : 해지 구독의 실질 월 구독료 합계 (= 이 달 절약되는 금액)
+      - cumulative_savings  : 해지 시점부터 지금까지 누적 절약 추정치
+      - history             : 최근 해지 내역 (최신순 20건)
+    """
+    device_id = _require_device_id()
+    if not device_id:
+        return jsonify({"error": "X-Device-Id header required"}), 400
+
+    with session_scope() as session:
+        rows = (
+            session.query(Prediction)
+            .filter(
+                Prediction.device_id == device_id,
+                Prediction.actual_target.isnot(None),
+                Prediction.feedback_at.isnot(None),
+            )
+            .order_by(Prediction.feedback_at.desc())
+            .all()
+        )
+
+        cancelled_count = 0
+        kept_count = 0
+        monthly_savings = 0
+        cumulative_savings = 0
+        history: list[dict] = []
+
+        now = datetime.utcnow()
+        DAYS_PER_MONTH = 30
+
+        for r in rows:
+            if r.actual_target == 1:
+                kept_count += 1
+                continue
+
+            cancelled_count += 1
+            monthly_cost = int(r.monthly_cost or 0)
+            discount = int(r.discount_amount or 0)
+            effective = max(0, monthly_cost - discount)
+            monthly_savings += effective
+
+            if r.feedback_at is not None:
+                days_since = max(0, (now - r.feedback_at).days)
+                months_since = max(1, round(days_since / DAYS_PER_MONTH) or 1)
+            else:
+                months_since = 1
+            cumulative_savings += effective * months_since
+
+            if len(history) < 20:
+                history.append({
+                    "prediction_id":     r.id,
+                    "subscription_type": r.subscription_type,
+                    "monthly_cost":      monthly_cost,
+                    "discount_amount":   discount,
+                    "effective_monthly": effective,
+                    "feedback_at":       r.feedback_at.isoformat() if r.feedback_at else None,
+                })
+
+    return jsonify({
+        "cancelled_count":    cancelled_count,
+        "kept_count":         kept_count,
+        "monthly_savings":    monthly_savings,
+        "cumulative_savings": cumulative_savings,
+        "history":            history,
     })
 
 

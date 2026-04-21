@@ -120,6 +120,72 @@ Future<void> submitFeedback({
   }
 }
 
+// ─── Savings (절감액 트래커) ──────────────────────────────────────────────
+
+class SavingsHistoryItem {
+  final int predictionId;
+  final String subscriptionType;
+  final int effectiveMonthlyCost;
+  final DateTime? feedbackAt;
+
+  SavingsHistoryItem({
+    required this.predictionId,
+    required this.subscriptionType,
+    required this.effectiveMonthlyCost,
+    required this.feedbackAt,
+  });
+
+  factory SavingsHistoryItem.fromJson(Map<String, dynamic> json) {
+    final fb = json['feedback_at'] as String?;
+    return SavingsHistoryItem(
+      predictionId: (json['prediction_id'] as num).toInt(),
+      subscriptionType: json['subscription_type'] as String? ?? '',
+      effectiveMonthlyCost: (json['effective_monthly'] as num?)?.toInt() ?? 0,
+      feedbackAt: fb != null ? DateTime.tryParse(fb) : null,
+    );
+  }
+}
+
+class SavingsSummary {
+  final int cancelledCount;
+  final int keptCount;
+  final int monthlySavings;
+  final int cumulativeSavings;
+  final List<SavingsHistoryItem> history;
+
+  SavingsSummary({
+    required this.cancelledCount,
+    required this.keptCount,
+    required this.monthlySavings,
+    required this.cumulativeSavings,
+    required this.history,
+  });
+
+  factory SavingsSummary.fromJson(Map<String, dynamic> json) {
+    return SavingsSummary(
+      cancelledCount: (json['cancelled_count'] as num?)?.toInt() ?? 0,
+      keptCount: (json['kept_count'] as num?)?.toInt() ?? 0,
+      monthlySavings: (json['monthly_savings'] as num?)?.toInt() ?? 0,
+      cumulativeSavings: (json['cumulative_savings'] as num?)?.toInt() ?? 0,
+      history: ((json['history'] as List<dynamic>?) ?? [])
+          .map((e) => SavingsHistoryItem.fromJson(e as Map<String, dynamic>))
+          .toList(),
+    );
+  }
+}
+
+Future<SavingsSummary> fetchSavings() async {
+  final response = await http.get(
+    Uri.parse('$_baseUrl/savings'),
+    headers: await _jsonHeaders(),
+  );
+  if (response.statusCode != 200) {
+    throw Exception('절감액 조회 실패: ${response.statusCode}');
+  }
+  return SavingsSummary.fromJson(
+      jsonDecode(utf8.decode(response.bodyBytes)) as Map<String, dynamic>);
+}
+
 Future<bool> checkServerHealth() async {
   try {
     final response = await http
