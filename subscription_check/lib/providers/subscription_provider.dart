@@ -5,15 +5,27 @@ import '../models/subscription.dart';
 import '../services/predict_service.dart';
 
 class ChurnResult {
+  final int predictionId;
   final bool isChurnCandidate;
   final double confidence;
   final String reason;
+  final bool? userFeedbackKept;
 
   ChurnResult({
+    required this.predictionId,
     required this.isChurnCandidate,
     required this.confidence,
     required this.reason,
+    this.userFeedbackKept,
   });
+
+  ChurnResult copyWith({bool? userFeedbackKept}) => ChurnResult(
+        predictionId: predictionId,
+        isChurnCandidate: isChurnCandidate,
+        confidence: confidence,
+        reason: reason,
+        userFeedbackKept: userFeedbackKept ?? this.userFeedbackKept,
+      );
 }
 
 const _analyzeDebounce = Duration(milliseconds: 600);
@@ -139,6 +151,26 @@ class SubscriptionProvider extends ChangeNotifier {
 
     _isAnalyzing = false;
     notifyListeners();
+  }
+
+  Future<void> submitChurnFeedback({
+    required String subscriptionId,
+    required bool actualKept,
+  }) async {
+    final result = _results[subscriptionId];
+    if (result == null) return;
+
+    try {
+      await submitFeedback(
+        predictionId: result.predictionId,
+        actualKept: actualKept,
+      );
+      _results[subscriptionId] = result.copyWith(userFeedbackKept: actualKept);
+      notifyListeners();
+    } catch (e) {
+      _errorMessage = '피드백 전송에 실패했습니다.';
+      notifyListeners();
+    }
   }
 
   @override

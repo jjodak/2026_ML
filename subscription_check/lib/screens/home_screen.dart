@@ -364,6 +364,10 @@ class _SubscriptionListSection extends StatelessWidget {
                 result: provider.results[items[i].id],
                 onDelete: () => provider.removeSubscription(items[i].id),
                 onUpdate: provider.updateSubscription,
+                onFeedback: (kept) => provider.submitChurnFeedback(
+                  subscriptionId: items[i].id,
+                  actualKept: kept,
+                ),
               ),
               if (i < items.length - 1)
                 const Padding(

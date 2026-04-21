@@ -24,18 +24,37 @@ Future<Map<String, ChurnResult>> predictBatch(
     throw Exception('서버 응답 오류: ${response.statusCode}');
   }
 
-  final Map<String, dynamic> data = jsonDecode(response.body);
+  final Map<String, dynamic> data = jsonDecode(utf8.decode(response.bodyBytes));
   final results = <String, ChurnResult>{};
 
   for (final entry in data.entries) {
     final r = entry.value as Map<String, dynamic>;
     results[entry.key] = ChurnResult(
+      predictionId: (r['prediction_id'] as num).toInt(),
       isChurnCandidate: r['is_churn_candidate'] as bool,
       confidence: (r['confidence'] as num).toDouble(),
       reason: r['reason'] as String,
     );
   }
   return results;
+}
+
+Future<void> submitFeedback({
+  required int predictionId,
+  required bool actualKept,
+}) async {
+  final response = await http.post(
+    Uri.parse('$_baseUrl/feedback'),
+    headers: {'Content-Type': 'application/json'},
+    body: jsonEncode({
+      'prediction_id': predictionId,
+      'actual_kept': actualKept,
+    }),
+  );
+
+  if (response.statusCode != 200) {
+    throw Exception('피드백 전송 실패: ${response.statusCode}');
+  }
 }
 
 Future<bool> checkServerHealth() async {

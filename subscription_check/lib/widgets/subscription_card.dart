@@ -9,6 +9,7 @@ class SubscriptionCard extends StatefulWidget {
   final ChurnResult? result;
   final VoidCallback onDelete;
   final ValueChanged<Subscription> onUpdate;
+  final ValueChanged<bool>? onFeedback;
 
   const SubscriptionCard({
     super.key,
@@ -16,6 +17,7 @@ class SubscriptionCard extends StatefulWidget {
     this.result,
     required this.onDelete,
     required this.onUpdate,
+    this.onFeedback,
   });
 
   @override
@@ -189,6 +191,13 @@ class _SubscriptionCardState extends State<SubscriptionCard> {
         children: [
           if (result != null) _ResultCard(result: result),
           if (result != null) const SizedBox(height: 12),
+          if (result != null && widget.onFeedback != null) ...[
+            _FeedbackRow(
+              currentFeedback: result.userFeedbackKept,
+              onSelect: widget.onFeedback!,
+            ),
+            const SizedBox(height: 12),
+          ],
           Wrap(
             spacing: 6,
             runSpacing: 6,
@@ -613,6 +622,104 @@ class _TossToggle extends StatelessWidget {
                 offset: const Offset(0, 1),
               ),
             ],
+          ),
+        ),
+      ),
+    );
+  }
+}
+
+class _FeedbackRow extends StatelessWidget {
+  final bool? currentFeedback;
+  final ValueChanged<bool> onSelect;
+
+  const _FeedbackRow({
+    required this.currentFeedback,
+    required this.onSelect,
+  });
+
+  @override
+  Widget build(BuildContext context) {
+    return Container(
+      padding: const EdgeInsets.all(12),
+      decoration: BoxDecoration(
+        color: AppColors.neutralSoft,
+        borderRadius: BorderRadius.circular(12),
+      ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          const Text(
+            '실제 결정은 어떻게 하셨나요?',
+            style: TextStyle(
+              fontSize: 12,
+              fontWeight: FontWeight.w600,
+              color: AppColors.textTertiary,
+            ),
+          ),
+          const SizedBox(height: 8),
+          Row(
+            children: [
+              Expanded(
+                child: _FeedbackButton(
+                  label: '유지함',
+                  selected: currentFeedback == true,
+                  onTap: () => onSelect(true),
+                  accent: AppColors.success,
+                ),
+              ),
+              const SizedBox(width: 8),
+              Expanded(
+                child: _FeedbackButton(
+                  label: '해지함',
+                  selected: currentFeedback == false,
+                  onTap: () => onSelect(false),
+                  accent: AppColors.danger,
+                ),
+              ),
+            ],
+          ),
+        ],
+      ),
+    );
+  }
+}
+
+class _FeedbackButton extends StatelessWidget {
+  final String label;
+  final bool selected;
+  final VoidCallback onTap;
+  final Color accent;
+
+  const _FeedbackButton({
+    required this.label,
+    required this.selected,
+    required this.onTap,
+    required this.accent,
+  });
+
+  @override
+  Widget build(BuildContext context) {
+    return GestureDetector(
+      onTap: onTap,
+      behavior: HitTestBehavior.opaque,
+      child: AnimatedContainer(
+        duration: const Duration(milliseconds: 180),
+        height: 36,
+        alignment: Alignment.center,
+        decoration: BoxDecoration(
+          color: selected ? accent : Colors.white,
+          borderRadius: BorderRadius.circular(10),
+          border: Border.all(
+            color: selected ? accent : const Color(0xFFE5E8EB),
+          ),
+        ),
+        child: Text(
+          label,
+          style: TextStyle(
+            fontSize: 13,
+            fontWeight: FontWeight.w700,
+            color: selected ? Colors.white : AppColors.textMuted,
           ),
         ),
       ),
