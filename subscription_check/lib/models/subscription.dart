@@ -18,6 +18,10 @@ class Subscription {
   final int discountAmount;
   final String? emoji;
 
+  /// 사용자가 마지막으로 남긴 유지/해지 피드백. null 이면 아직 피드백 없음.
+  final bool? lastFeedbackKept;
+  final DateTime? lastFeedbackAt;
+
   int get effectiveMonthlyCost =>
       (monthlyCost - discountAmount).clamp(0, monthlyCost);
 
@@ -83,6 +87,7 @@ class Subscription {
       };
 
   static Subscription fromServerJson(Map<String, dynamic> json) {
+    final feedbackAt = json['last_feedback_at'] as String?;
     return Subscription(
       id: json['id'].toString(),
       name: json['name'] as String,
@@ -98,6 +103,8 @@ class Subscription {
       remainingMonths: (json['remaining_months'] as num?)?.toDouble() ?? 0.0,
       discountAmount: (json['discount_amount'] as num?)?.toInt() ?? 0,
       emoji: json['emoji'] as String?,
+      lastFeedbackKept: json['last_feedback_kept'] as bool?,
+      lastFeedbackAt: feedbackAt != null ? DateTime.tryParse(feedbackAt) : null,
     );
   }
 
@@ -144,6 +151,8 @@ class Subscription {
     double? remainingMonths,
     int? discountAmount,
     String? emoji,
+    bool? lastFeedbackKept,
+    DateTime? lastFeedbackAt,
   }) {
     return Subscription(
       id: id ?? this.id,
@@ -160,6 +169,8 @@ class Subscription {
       remainingMonths: remainingMonths ?? this.remainingMonths,
       discountAmount: discountAmount ?? this.discountAmount,
       emoji: emoji ?? this.emoji,
+      lastFeedbackKept: lastFeedbackKept ?? this.lastFeedbackKept,
+      lastFeedbackAt: lastFeedbackAt ?? this.lastFeedbackAt,
     );
   }
 
@@ -178,6 +189,8 @@ class Subscription {
     this.remainingMonths = 0,
     this.discountAmount = 0,
     this.emoji,
+    this.lastFeedbackKept,
+    this.lastFeedbackAt,
   });
 }
 

@@ -72,7 +72,9 @@ class SubscriptionProvider extends ChangeNotifier {
       _items
         ..clear()
         ..addAll(fetched);
-      _results.clear();
+      // 삭제된 구독의 예측 결과만 정리. 남아있는 구독의 피드백 상태는 보존.
+      final existingIds = fetched.map((s) => s.id).toSet();
+      _results.removeWhere((id, _) => !existingIds.contains(id));
     } catch (e) {
       _errorMessage = '구독 목록을 불러올 수 없습니다.';
     }
@@ -147,7 +149,15 @@ class SubscriptionProvider extends ChangeNotifier {
     notifyListeners();
 
     try {
-      _results = await predictBatch(_items);
+      final fresh = await predictBatch(_items);
+      // 재분석 시 사용자가 이미 남긴 피드백 선택을 유지한다.
+      _results = {
+        for (final entry in fresh.entries)
+          entry.key: _results[entry.key]?.userFeedbackKept != null
+              ? entry.value
+                  .copyWith(userFeedbackKept: _results[entry.key]!.userFeedbackKept)
+              : entry.value,
+      };
     } catch (e) {
       _errorMessage = '추론 서버에 연결할 수 없습니다.';
     }
@@ -167,8 +177,18 @@ class SubscriptionProvider extends ChangeNotifier {
       await submitFeedback(
         predictionId: result.predictionId,
         actualKept: actualKept,
+        subscriptionId: subscriptionId,
       );
       _results[subscriptionId] = result.copyWith(userFeedbackKept: actualKept);
+      // 서버에 영구 저장된 피드백 상태를 로컬 구독 모델에도 반영해
+      // 앱 재시작/기기 변경 이후에도 UI 에서 일관되게 보이도록 한다.
+      final idx = _items.indexWhere((s) => s.id == subscriptionId);
+      if (idx >= 0) {
+        _items[idx] = _items[idx].copyWith(
+          lastFeedbackKept: actualKept,
+          lastFeedbackAt: DateTime.now(),
+        );
+      }
       notifyListeners();
     } catch (e) {
       _errorMessage = '피드백 전송에 실패했습니다.';

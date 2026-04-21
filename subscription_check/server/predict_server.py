@@ -301,7 +301,11 @@ def predict_batch():
 @app.route("/feedback", methods=["POST"])
 def feedback():
     """
-    Body: { "prediction_id": int, "actual_kept": bool }
+    Body: {
+      "prediction_id": int,
+      "actual_kept":   bool,
+      "subscription_id": int (optional) — 구독 카드의 피드백 UI 상태 영구 저장용
+    }
     actual_kept=true  → target=1 (유지)
     actual_kept=false → target=0 (해지)
     """
@@ -310,16 +314,34 @@ def feedback():
     if pid is None or "actual_kept" not in data:
         return jsonify({"error": "prediction_id, actual_kept required"}), 400
 
-    target = 1 if bool(data["actual_kept"]) else 0
+    kept   = bool(data["actual_kept"])
+    target = 1 if kept else 0
+    sub_id = data.get("subscription_id")
+    now    = datetime.utcnow()
+
+    # subscription_id 와 함께 보낸 경우, device_id 소유권도 검증
+    device_id = _require_device_id() or None
 
     with session_scope() as session:
         row = session.get(Prediction, int(pid))
         if row is None:
             return jsonify({"error": "prediction not found"}), 404
         row.actual_target = target
-        row.feedback_at   = datetime.utcnow()
+        row.feedback_at   = now
 
-    return jsonify({"ok": True, "prediction_id": int(pid), "actual_target": target})
+        if sub_id is not None:
+            sub = session.get(AppSubscription, int(sub_id))
+            if sub is not None and (device_id is None or sub.device_id == device_id):
+                sub.last_feedback_kept = kept
+                sub.last_feedback_at   = now
+
+    return jsonify({
+        "ok": True,
+        "prediction_id":  int(pid),
+        "actual_target":  target,
+        "last_feedback_kept": kept,
+        "last_feedback_at":   now.isoformat(),
+    })
 
 
 @app.route("/retrain", methods=["POST"])

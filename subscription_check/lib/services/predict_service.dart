@@ -105,14 +105,20 @@ Future<Map<String, ChurnResult>> predictBatch(
 Future<void> submitFeedback({
   required int predictionId,
   required bool actualKept,
+  String? subscriptionId,
 }) async {
+  final body = <String, dynamic>{
+    'prediction_id': predictionId,
+    'actual_kept': actualKept,
+  };
+  if (subscriptionId != null) {
+    body['subscription_id'] = int.tryParse(subscriptionId) ?? subscriptionId;
+  }
+
   final response = await http.post(
     Uri.parse('$_baseUrl/feedback'),
     headers: await _jsonHeaders(),
-    body: jsonEncode({
-      'prediction_id': predictionId,
-      'actual_kept': actualKept,
-    }),
+    body: jsonEncode(body),
   );
 
   if (response.statusCode != 200) {

@@ -65,6 +65,11 @@ class AppSubscription(Base):
     remaining_months      = Column(Float, default=0.0)
     discount_amount       = Column(Integer, default=0)
 
+    # ── 사용자 피드백 상태 (영구 저장) ──
+    # True = 유지, False = 해지, None = 피드백 없음
+    last_feedback_kept    = Column(Boolean, nullable=True)
+    last_feedback_at      = Column(DateTime, nullable=True)
+
     def to_dict(self) -> dict:
         return {
             "id":                   str(self.id),
@@ -81,6 +86,9 @@ class AppSubscription(Base):
             "is_annual":            bool(self.is_annual),
             "remaining_months":     self.remaining_months,
             "discount_amount":      self.discount_amount,
+            "last_feedback_kept":   self.last_feedback_kept,
+            "last_feedback_at":     self.last_feedback_at.isoformat()
+                                      if self.last_feedback_at else None,
         }
 
 
@@ -125,11 +133,12 @@ def _apply_lightweight_migrations() -> None:
     """
     with engine.begin() as conn:
         if IS_SQLITE:
-            # SQLite 는 IF NOT EXISTS 지원이 버전에 따라 다르므로 PRAGMA 로 확인
-            rows = conn.execute(text("PRAGMA table_info(predictions)")).fetchall()
-            cols = {row[1] for row in rows}
-            if rows and "device_id" not in cols:
-                conn.execute(text("ALTER TABLE predictions ADD COLUMN device_id VARCHAR(128)"))
+            _sqlite_add_column_if_missing(
+                conn, "predictions", "device_id", "VARCHAR(128)")
+            _sqlite_add_column_if_missing(
+                conn, "app_subscriptions", "last_feedback_kept", "BOOLEAN")
+            _sqlite_add_column_if_missing(
+                conn, "app_subscriptions", "last_feedback_at", "DATETIME")
         else:
             conn.execute(text(
                 "ALTER TABLE predictions ADD COLUMN IF NOT EXISTS device_id VARCHAR(128)"
@@ -137,6 +146,23 @@ def _apply_lightweight_migrations() -> None:
             conn.execute(text(
                 "CREATE INDEX IF NOT EXISTS ix_predictions_device_id ON predictions(device_id)"
             ))
+            conn.execute(text(
+                "ALTER TABLE app_subscriptions "
+                "ADD COLUMN IF NOT EXISTS last_feedback_kept BOOLEAN"
+            ))
+            conn.execute(text(
+                "ALTER TABLE app_subscriptions "
+                "ADD COLUMN IF NOT EXISTS last_feedback_at TIMESTAMP"
+            ))
+
+
+def _sqlite_add_column_if_missing(conn, table: str, column: str, sqltype: str) -> None:
+    rows = conn.execute(text(f"PRAGMA table_info({table})")).fetchall()
+    if not rows:
+        return
+    cols = {row[1] for row in rows}
+    if column not in cols:
+        conn.execute(text(f"ALTER TABLE {table} ADD COLUMN {column} {sqltype}"))
 
 
 def init_db() -> None:

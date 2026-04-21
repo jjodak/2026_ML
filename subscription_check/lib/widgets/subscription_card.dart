@@ -193,7 +193,9 @@ class _SubscriptionCardState extends State<SubscriptionCard> {
           if (result != null) const SizedBox(height: 12),
           if (result != null && widget.onFeedback != null) ...[
             _FeedbackRow(
-              currentFeedback: result.userFeedbackKept,
+              // 서버에 영구 저장된 값을 우선 사용, 없으면 세션 내 상태로 fallback
+              currentFeedback:
+                  sub.lastFeedbackKept ?? result.userFeedbackKept,
               onSelect: widget.onFeedback!,
             ),
             const SizedBox(height: 12),
