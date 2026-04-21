@@ -43,24 +43,28 @@ class HomeScreen extends StatelessWidget {
           builder: (context, provider, _) {
             return Stack(
               children: [
-                CustomScrollView(
-                  slivers: [
-                    SliverToBoxAdapter(child: _Header()),
-                    SliverToBoxAdapter(
-                      child: _HeroSection(provider: provider),
-                    ),
-                    SliverToBoxAdapter(
-                      child: _SubscriptionListSection(
-                        provider: provider,
-                        onAdd: () => _openAddSheet(context),
-                      ),
-                    ),
-                    if (provider.errorMessage != null)
+                RefreshIndicator(
+                  onRefresh: () => provider.loadFromServer(),
+                  color: AppColors.primary,
+                  child: CustomScrollView(
+                    slivers: [
+                      SliverToBoxAdapter(child: _Header()),
                       SliverToBoxAdapter(
-                        child: _ErrorBanner(message: provider.errorMessage!),
+                        child: _HeroSection(provider: provider),
                       ),
-                    const SliverToBoxAdapter(child: SizedBox(height: 120)),
-                  ],
+                      SliverToBoxAdapter(
+                        child: _SubscriptionListSection(
+                          provider: provider,
+                          onAdd: () => _openAddSheet(context),
+                        ),
+                      ),
+                      if (provider.errorMessage != null)
+                        SliverToBoxAdapter(
+                          child: _ErrorBanner(message: provider.errorMessage!),
+                        ),
+                      const SliverToBoxAdapter(child: SizedBox(height: 120)),
+                    ],
+                  ),
                 ),
                 if (provider.items.isNotEmpty)
                   Positioned(

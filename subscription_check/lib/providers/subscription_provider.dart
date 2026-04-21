@@ -101,7 +101,7 @@ class SubscriptionProvider extends ChangeNotifier {
     final idx = _items.indexWhere((s) => s.id == id);
     if (idx < 0) return;
     final removed = _items.removeAt(idx);
-    _results.remove(id);
+    final removedResult = _results.remove(id);
     notifyListeners();
 
     try {
@@ -109,6 +109,7 @@ class SubscriptionProvider extends ChangeNotifier {
       _scheduleAnalyze();
     } catch (e) {
       _items.insert(idx, removed); // rollback
+      if (removedResult != null) _results[id] = removedResult;
       _errorMessage = '구독 삭제에 실패했습니다.';
       notifyListeners();
     }

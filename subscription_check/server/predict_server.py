@@ -266,6 +266,9 @@ def delete_subscription(sub_id: int):
 # ── 엔드포인트 ────────────────────────────────────────────────────────────
 @app.route("/predict", methods=["POST"])
 def predict():
+    if model is None:
+        return jsonify({"error": "Model not loaded"}), 503
+
     data = request.get_json(silent=True)
     if not data:
         return jsonify({"error": "No JSON body"}), 400
@@ -277,6 +280,9 @@ def predict():
 
 @app.route("/predict_batch", methods=["POST"])
 def predict_batch():
+    if model is None:
+        return jsonify({"error": "Model not loaded"}), 503
+
     items = request.get_json(silent=True)
     if not isinstance(items, list):
         return jsonify({"error": "Expected JSON array"}), 400
